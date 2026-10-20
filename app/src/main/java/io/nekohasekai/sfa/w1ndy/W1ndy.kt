@@ -29,7 +29,7 @@ import java.util.UUID
 object W1ndy {
     const val BASE_URL = "https://site.litenergyapp.store"
     const val BOT_URL = "https://t.me/VPN_LitEnergy_bot"
-    const val CHANNEL_URL = "https://t.me/+65OxDmkfjv04ZDhh"
+    const val CHANNEL_URL = "https://t.me/windytoptop"
     const val APK_URL = "https://site.litenergyapp.store/download/W1NDY-CFG.apk"
     private const val PROFILE_VPN = "W1NDY VPN"
     private const val PROFILE_DNS = "W1NDY DNS"

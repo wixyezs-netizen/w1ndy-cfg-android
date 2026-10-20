@@ -235,7 +235,7 @@ jobs:
             adb shell monkey -p com.w1ndy.cfg -c android.intent.category.LAUNCHER 1; sleep 10
             python3 tap.py "__none__"
             shot 6-home
-            python3 tap.py "Подключить"; sleep 4
+            python3 tap.py "АКТИВИРОВАТЬ"; sleep 4
             shot 7-permission
             python3 tap.py "Allow"; sleep 3
             python3 tap.py "OK"; sleep 12
@@ -243,6 +243,9 @@ jobs:
             adb shell dumpsys connectivity | grep -c "VPN" | sed 's/^/vpn_lines=/' | tee -a shots/status.txt || true
             python3 tap.py "Настройки"; sleep 3
             shot 9-settings
+            adb shell input keyevent 4; sleep 2
+            python3 tap.py "Меню"; sleep 3
+            shot 10-menu
             adb shell pidof com.w1ndy.cfg && echo "APP_ALIVE=1" | tee -a shots/status.txt || echo "APP_ALIVE=0" | tee -a shots/status.txt
             adb logcat -d -b crash > shots/crash.txt || true
             adb logcat -d | grep -iE "AndroidRuntime|FATAL|w1ndy|sing-box|libbox" | grep -v "tg-link" | tail -300 > shots/logcat.txt || true
