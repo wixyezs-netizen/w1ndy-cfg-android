@@ -38,8 +38,8 @@ private val DarkColorScheme =
         surfaceContainer = Color(0xFF161616),
         surfaceContainerHigh = Color(0xFF1C1C1E),
         surfaceContainerHighest = Color(0xFF2C2C2E),
-        outline = Color(0xFF3A3A3C),
-        outlineVariant = Color(0xFF2C2C2E),
+        outline = Color(0xFF48484A),
+        outlineVariant = Color(0xFF3A3A3C),
     )
 
 private val LightColorScheme =

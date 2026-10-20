@@ -191,10 +191,30 @@ jobs:
             adb shell monkey -p com.w1ndy.cfg -c android.intent.category.LAUNCHER 1
             sleep 20
             adb exec-out screencap -p > shots/1-main.png
-            # нажимаем "У меня есть ссылка"
-            adb shell uiautomator dump /sdcard/ui.xml >/dev/null 2>&1; adb pull /sdcard/ui.xml shots/ui-main.xml || true
-            XY=$(python3 -c "import re,sys; s=open('shots/ui-main.xml',encoding='utf-8').read(); m=re.search(r'text=\"У меня есть ссылка\"[^>]*bounds=\"\[(\d+),(\d+)\]\[(\d+),(\d+)\]\"', s); print('' if not m else f'{(int(m[1])+int(m[3]))//2} {(int(m[2])+int(m[4]))//2}')" 2>/dev/null)
-            if [ -n "$XY" ]; then adb shell input tap $XY; sleep 3; adb exec-out screencap -p > shots/2-link-dialog.png; adb shell input keyevent 4; sleep 2; fi
+            cat > tap.py <<'PY'
+            import re, subprocess, sys, time
+            def dump():
+                subprocess.run("adb shell uiautomator dump /sdcard/ui.xml", shell=True, capture_output=True)
+                return subprocess.run("adb exec-out cat /sdcard/ui.xml", shell=True, capture_output=True).stdout.decode("utf-8", "ignore")
+            def find(s, text):
+                m = re.search(r'text="' + re.escape(text) + r'"[^>]*bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]"', s)
+                return None if not m else ((int(m[1]) + int(m[3])) // 2, (int(m[2]) + int(m[4])) // 2)
+            for _ in range(5):
+                s = dump()
+                w = find(s, "Wait") or find(s, "Подождать")
+                if not w: break
+                subprocess.run(f"adb shell input tap {w[0]} {w[1]}", shell=True); time.sleep(2)
+            open("shots/ui.xml", "w", encoding="utf-8").write(s)
+            xy = find(s, sys.argv[1])
+            if xy: subprocess.run(f"adb shell input tap {xy[0]} {xy[1]}", shell=True)
+            print("tapped" if xy else "not found", sys.argv[1])
+            PY
+            sed -i 's/^            //' tap.py
+            python3 tap.py "Главная"; sleep 2
+            adb exec-out screencap -p > shots/1-main.png
+            python3 tap.py "У меня есть ссылка"; sleep 3
+            adb exec-out screencap -p > shots/2-link-dialog.png
+            adb shell input keyevent 4; sleep 2
             adb shell pidof com.w1ndy.cfg && echo "APP_ALIVE=1" | tee shots/status.txt || echo "APP_ALIVE=0" | tee shots/status.txt
             adb logcat -d -b crash > shots/crash.txt || true
             adb logcat -d | grep -iE "AndroidRuntime|FATAL|w1ndy" | tail -200 > shots/logcat.txt || true
