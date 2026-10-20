@@ -212,9 +212,16 @@ jobs:
             sed -i 's/^            //' tap.py
             python3 tap.py "Главная"; sleep 2
             adb exec-out screencap -p > shots/1-main.png
-            python3 tap.py "У меня есть ссылка"; sleep 3
-            adb exec-out screencap -p > shots/2-link-dialog.png
-            adb shell input keyevent 4; sleep 2
+            python3 tap.py "Код доступа"; sleep 1
+            adb shell input text "TEST2345"; sleep 1
+            adb shell input keyevent 111; sleep 1
+            adb exec-out screencap -p > shots/2-code.png
+            python3 tap.py "Активировать"; sleep 6
+            adb exec-out screencap -p > shots/3-bad-code.png
+            python3 tap.py "Только DNS"; sleep 3
+            adb exec-out screencap -p > shots/4-dns.png
+            python3 tap.py "Применить"; sleep 3
+            adb exec-out screencap -p > shots/5-dns-applied.png
             adb shell pidof com.w1ndy.cfg && echo "APP_ALIVE=1" | tee shots/status.txt || echo "APP_ALIVE=0" | tee shots/status.txt
             adb logcat -d -b crash > shots/crash.txt || true
             adb logcat -d | grep -iE "AndroidRuntime|FATAL|w1ndy" | tail -200 > shots/logcat.txt || true

@@ -2,6 +2,7 @@ package io.nekohasekai.sfa.w1ndy
 
 import android.content.Context
 import android.content.SharedPreferences
+import android.os.Build
 import io.nekohasekai.libbox.Libbox
 import io.nekohasekai.sfa.BuildConfig
 import io.nekohasekai.sfa.database.Profile
@@ -11,91 +12,93 @@ import io.nekohasekai.sfa.database.TypedProfile
 import io.nekohasekai.sfa.utils.HTTPClient
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
 import java.net.HttpURLConnection
+import java.net.InetAddress
 import java.net.URL
 import java.net.URLEncoder
 import java.util.Date
+import java.util.UUID
 
 /**
- * Аккаунт W1NDY CFG: вход через Telegram-бота, данные подписки и автоматический профиль.
+ * W1NDY CFG: доступ по коду (WireGuard-конфиг из пула администратора)
+ * и отдельный режим «только DNS».
  */
 object W1ndy {
     const val BASE_URL = "https://site.litenergyapp.store"
-    const val BOT_URL = "https://t.me/VPN_LitEnergy_bot"
-    const val PLANS_URL = "https://site.litenergyapp.store/plans/"
-    const val PROFILE_NAME = "W1NDY"
+    private const val PROFILE_VPN = "W1NDY VPN"
+    private const val PROFILE_DNS = "W1NDY DNS"
 
-    private const val PREFS = "w1ndy_account"
+    const val MODE_VPN = "vpn"
+    const val MODE_DNS = "dns"
+
+    data class DnsPreset(val title: String, val address: String)
+
+    val DNS_PRESETS = listOf(
+        DnsPreset("Google", "8.8.8.8"),
+        DnsPreset("Cloudflare", "1.1.1.1"),
+        DnsPreset("Яндекс", "77.88.8.8"),
+        DnsPreset("AdGuard", "94.140.14.14"),
+    )
+
+    private const val PREFS = "w1ndy_app"
+    private const val K_INSTALL = "install_id"
     private const val K_TOKEN = "token"
-    private const val K_TOKEN_AT = "token_at"
-    private const val K_NAME = "name"
-    private const val K_SUB_URL = "sub_url"
-    private const val K_STATUS = "status"
-    private const val K_EXPIRE = "expire_at"
-    private const val K_DAYS = "days_left"
-    private const val K_PROFILE_ID = "profile_id"
-    private const val TOKEN_REFRESH_MS = 7L * 24 * 3600 * 1000
+    private const val K_NAME = "conf_name"
+    private const val K_MODE = "mode"
+    private const val K_DNS = "dns_server"
+    private const val K_VPN_ID = "vpn_profile_id"
+    private const val K_DNS_ID = "dns_profile_id"
 
-    data class Account(
-        val loggedIn: Boolean,
-        val name: String,
-        val subUrl: String,
-        val status: String,
-        val expireAt: String,
-        val daysLeft: Int,
-    ) {
-        val hasLink: Boolean get() = subUrl.isNotEmpty()
-        val active: Boolean get() = status == "ACTIVE"
-
-        /** "2026-11-21T10:00:00Z" -> "21.11.2026" */
-        val expireDate: String
-            get() {
-                val d = expireAt.take(10).split("-")
-                return if (d.size == 3) "${d[2]}.${d[1]}.${d[0]}" else ""
-            }
-    }
+    data class State(
+        val activated: Boolean,
+        val confName: String,
+        val mode: String,
+        val dnsServer: String,
+    )
 
     class ApiException(val code: Int, message: String) : Exception(message)
 
-    private fun prefs(context: Context): SharedPreferences = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+    private fun prefs(context: Context): SharedPreferences =
+        context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
-    fun load(context: Context): Account {
+    fun load(context: Context): State {
         val p = prefs(context)
-        return Account(
-            loggedIn = !p.getString(K_TOKEN, null).isNullOrEmpty(),
-            name = p.getString(K_NAME, "") ?: "",
-            subUrl = p.getString(K_SUB_URL, "") ?: "",
-            status = p.getString(K_STATUS, "") ?: "",
-            expireAt = p.getString(K_EXPIRE, "") ?: "",
-            daysLeft = p.getInt(K_DAYS, 0),
+        return State(
+            activated = !p.getString(K_TOKEN, null).isNullOrEmpty(),
+            confName = p.getString(K_NAME, "") ?: "",
+            mode = p.getString(K_MODE, MODE_VPN) ?: MODE_VPN,
+            dnsServer = p.getString(K_DNS, DNS_PRESETS[0].address) ?: DNS_PRESETS[0].address,
         )
     }
 
-    fun logout(context: Context) {
-        prefs(context).edit()
-            .remove(K_TOKEN).remove(K_TOKEN_AT).remove(K_NAME)
-            .remove(K_STATUS).remove(K_EXPIRE).remove(K_DAYS)
-            .apply()
+    private fun installId(context: Context): String {
+        val p = prefs(context)
+        p.getString(K_INSTALL, null)?.let { return it }
+        val id = UUID.randomUUID().toString().replace("-", "")
+        p.edit().putString(K_INSTALL, id).apply()
+        return id
     }
 
-    private fun get(path: String, token: String? = null): JSONObject {
+    private fun request(method: String, path: String, body: JSONObject? = null): JSONObject {
         val conn = URL(BASE_URL + path).openConnection() as HttpURLConnection
         try {
+            conn.requestMethod = method
             conn.connectTimeout = 15_000
             conn.readTimeout = 20_000
             conn.setRequestProperty("Accept", "application/json")
             conn.setRequestProperty("User-Agent", "W1NDY-CFG/${BuildConfig.VERSION_NAME} (Android)")
-            if (!token.isNullOrEmpty()) conn.setRequestProperty("X-LitEnergy-Session", token)
+            if (body != null) {
+                conn.doOutput = true
+                conn.setRequestProperty("Content-Type", "application/json; charset=utf-8")
+                conn.outputStream.use { it.write(body.toString().toByteArray(Charsets.UTF_8)) }
+            }
             val code = conn.responseCode
             val stream = if (code in 200..299) conn.inputStream else conn.errorStream
-            val body = stream?.bufferedReader()?.use { it.readText() } ?: ""
-            val json = try {
-                JSONObject(body)
-            } catch (e: Exception) {
-                JSONObject()
-            }
+            val text = stream?.bufferedReader()?.use { it.readText() } ?: ""
+            val json = runCatching { JSONObject(text) }.getOrElse { JSONObject() }
             if (code !in 200..299) {
                 throw ApiException(code, json.optString("message").ifEmpty { "Ошибка сервера ($code)" })
             }
@@ -105,100 +108,186 @@ object W1ndy {
         }
     }
 
-    /** Шаг 1: код входа и ссылка на бота. */
-    suspend fun requestLogin(): Pair<String, String> = withContext(Dispatchers.IO) {
-        val j = get("/api/web/auth/request-bot?client=app")
-        val code = j.optString("code")
-        val url = j.optString("url")
-        if (code.isEmpty() || url.isEmpty()) throw ApiException(500, "Не удалось начать вход")
-        code to url
+    private fun profileUrl(token: String) = "$BASE_URL/api/w1ndy/profile?t=" + URLEncoder.encode(token, "UTF-8")
+
+    private fun deviceModel(): String {
+        val m = Build.MODEL ?: ""
+        val b = (Build.MANUFACTURER ?: "").replaceFirstChar { it.uppercase() }
+        return (if (m.startsWith(b, ignoreCase = true)) m else "$b $m").trim().take(64)
     }
 
-    /** Шаг 2: опрос подтверждения. true — вход выполнен, токен сохранён. */
-    suspend fun pollLogin(context: Context, code: String): Boolean = withContext(Dispatchers.IO) {
-        val j = get("/api/web/auth/poll-bot?code=" + URLEncoder.encode(code, "UTF-8"))
-        if (j.optString("status") != "authenticated") return@withContext false
+    /** Активация по коду: сервер выдаёт свободный конфиг, приложение создаёт профиль и выбирает его. */
+    suspend fun activate(context: Context, code: String): State = withContext(Dispatchers.IO) {
+        val j = request(
+            "POST",
+            "/api/w1ndy/activate",
+            JSONObject()
+                .put("code", code.trim())
+                .put("install_id", installId(context))
+                .put("model", deviceModel()),
+        )
         val token = j.optString("token")
-        if (token.isEmpty()) return@withContext false
-        val user = j.optJSONObject("user")
+        if (token.isEmpty()) throw ApiException(500, "Сервер не выдал доступ")
         prefs(context).edit()
             .putString(K_TOKEN, token)
-            .putLong(K_TOKEN_AT, System.currentTimeMillis())
-            .putString(K_NAME, user?.optString("first_name").orEmpty())
+            .putString(K_NAME, j.optString("name"))
+            .putString(K_MODE, MODE_VPN)
             .apply()
-        true
+        syncVpnProfile(context, profileUrl(token))
+        load(context)
     }
 
-    /**
-     * Обновляет данные аккаунта с сервера. При [sync] (или если ссылка изменилась) —
-     * скачивает конфигурацию и выбирает профиль W1NDY.
-     */
-    suspend fun refresh(context: Context, sync: Boolean = false): Account = withContext(Dispatchers.IO) {
-        val p = prefs(context)
-        var token = p.getString(K_TOKEN, null)
-        if (token.isNullOrEmpty()) return@withContext load(context)
-        if (System.currentTimeMillis() - p.getLong(K_TOKEN_AT, 0L) > TOKEN_REFRESH_MS) {
-            runCatching { get("/api/web/auth/refresh", token) }.onSuccess { j ->
-                val t = j.optString("token")
-                if (t.isNotEmpty()) {
-                    token = t
-                    p.edit().putString(K_TOKEN, t).putLong(K_TOKEN_AT, System.currentTimeMillis()).apply()
-                }
-            }
-        }
-        val j = try {
-            get("/api/miniapp/bootstrap", token)
+    /** Проверка доступа (403 — доступ отключён администратором: забываем код и профиль). */
+    private fun checkAccess(context: Context, token: String) {
+        try {
+            val j = request("GET", "/api/w1ndy/status?t=" + URLEncoder.encode(token, "UTF-8"))
+            prefs(context).edit().putString(K_NAME, j.optString("name")).apply()
         } catch (e: ApiException) {
-            if (e.code == 401) {
-                logout(context)
-                throw ApiException(401, "Сессия истекла — войдите ещё раз")
-            }
+            if (e.code == 403) throw ApiException(403, "Доступ отключён администратором. Введите новый код.")
             throw e
         }
-        val sub = j.optJSONObject("subscription")
-        val user = j.optJSONObject("user")
-        val url = sub?.optString("url").orEmpty().let { if (it == "null") "" else it }
-        val oldUrl = p.getString(K_SUB_URL, "") ?: ""
-        p.edit()
-            .putString(K_NAME, user?.optString("first_name").orEmpty().ifEmpty { p.getString(K_NAME, "") ?: "" })
-            .putString(K_STATUS, sub?.optString("status").orEmpty())
-            .putString(K_EXPIRE, sub?.optString("expire_at").orEmpty().let { if (it == "null") "" else it })
-            .putInt(K_DAYS, sub?.optInt("days_left", 0) ?: 0)
-            .apply()
-        if (url.isNotEmpty() && (sync || url != oldUrl || findProfile(context) == null)) {
-            syncProfile(context, url)
+    }
+
+    /** При открытии экрана. */
+    suspend fun refresh(context: Context): State = withContext(Dispatchers.IO) {
+        val token = prefs(context).getString(K_TOKEN, null)
+        if (token.isNullOrEmpty()) return@withContext load(context)
+        try {
+            checkAccess(context, token)
+        } catch (e: ApiException) {
+            if (e.code == 403) reset(context)
+            throw e
+        }
+        if (findProfile(K_VPN_ID, context) == null) syncVpnProfile(context, profileUrl(token))
+        load(context)
+    }
+
+    /** Повторно скачать конфиг (если администратор что-то поменял). */
+    suspend fun updateVpn(context: Context): State = withContext(Dispatchers.IO) {
+        val token = prefs(context).getString(K_TOKEN, null) ?: throw ApiException(401, "Сначала введите код")
+        try {
+            checkAccess(context, token)
+        } catch (e: ApiException) {
+            if (e.code == 403) reset(context)
+            throw e
+        }
+        syncVpnProfile(context, profileUrl(token))
+        load(context)
+    }
+
+    /** Забыть код и удалить профиль VPN. */
+    suspend fun reset(context: Context) = withContext(Dispatchers.IO) {
+        findProfile(K_VPN_ID, context)?.let { ProfileManager.delete(it) }
+        prefs(context).edit().remove(K_TOKEN).remove(K_NAME).remove(K_VPN_ID).apply()
+    }
+
+    /** Переключение режима VPN / только DNS. */
+    suspend fun setMode(context: Context, mode: String): State = withContext(Dispatchers.IO) {
+        prefs(context).edit().putString(K_MODE, mode).apply()
+        if (mode == MODE_DNS) {
+            applyDns(context, load(context).dnsServer)
+        } else {
+            findProfile(K_VPN_ID, context)?.let { select(it) }
         }
         load(context)
     }
 
-    /** Ссылка из кабинета: https://… или sing-box://import-remote-profile?url=… */
-    fun normalizeLink(raw: String): String? {
+    // ---------- DNS ----------
+
+    private val IPV4 = Regex("^((25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)\\.){3}(25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)$")
+
+    /** Только IP-адрес (IPv4 или IPv6), без доменов. null — неверный. */
+    fun normalizeDns(raw: String): String? {
         val s = raw.trim()
-        if (s.startsWith("sing-box://")) {
-            return runCatching { Libbox.parseRemoteProfileImportLink(s).url }.getOrNull()
+        if (IPV4.matches(s)) return s
+        if (s.contains(':') && s.all { it.isDigit() || it in 'a'..'f' || it in 'A'..'F' || it == ':' || it == '.' }) {
+            return runCatching { InetAddress.getByName(s).hostAddress }.getOrNull()
         }
-        if (s.startsWith("https://") || s.startsWith("http://")) return s
         return null
     }
 
-    private suspend fun findProfile(context: Context): Profile? {
-        val id = prefs(context).getLong(K_PROFILE_ID, -1L)
-        if (id > 0) ProfileManager.get(id)?.let { return it }
-        return null
+    fun dnsConfig(server: String): String {
+        val root = JSONObject()
+        root.put("log", JSONObject().put("level", "warn"))
+        root.put(
+            "dns",
+            JSONObject()
+                .put("servers", JSONArray().put(JSONObject().put("type", "udp").put("tag", "dns-custom").put("server", server)))
+                .put("final", "dns-custom"),
+        )
+        // В туннель попадает только адрес DNS-сервера VPN (172.19.0.2), остальной трафик идёт напрямую.
+        root.put(
+            "inbounds",
+            JSONArray().put(
+                JSONObject()
+                    .put("type", "tun")
+                    .put("tag", "tun-in")
+                    .put("address", JSONArray().put("172.19.0.1/30"))
+                    .put("route_address", JSONArray().put("172.19.0.0/30"))
+                    .put("auto_route", true)
+                    .put("stack", "mixed"),
+            ),
+        )
+        root.put("outbounds", JSONArray().put(JSONObject().put("type", "direct").put("tag", "direct")))
+        root.put(
+            "route",
+            JSONObject()
+                .put(
+                    "rules",
+                    JSONArray()
+                        .put(JSONObject().put("action", "sniff"))
+                        .put(JSONObject().put("protocol", "dns").put("action", "hijack-dns"))
+                        .put(JSONObject().put("port", 53).put("action", "hijack-dns")),
+                )
+                .put("final", "direct")
+                .put("auto_detect_interface", true),
+        )
+        return root.toString(2)
     }
 
-    /** Создаёт/обновляет профиль W1NDY с этой ссылкой, скачивает конфигурацию и делает его активным. */
-    suspend fun syncProfile(context: Context, url: String): Profile = withContext(Dispatchers.IO) {
+    /** Создаёт/обновляет профиль «только DNS» с этим сервером и выбирает его. */
+    suspend fun applyDns(context: Context, raw: String): State = withContext(Dispatchers.IO) {
+        val server = normalizeDns(raw) ?: throw ApiException(400, "Введите IP-адрес DNS, например 8.8.8.8")
+        val content = dnsConfig(server)
+        Libbox.checkConfig(content)
+        val profile = writeProfile(context, K_DNS_ID, "$PROFILE_DNS · $server", TypedProfile.Type.Local, null, content)
+        prefs(context).edit().putString(K_DNS, server).putString(K_MODE, MODE_DNS).apply()
+        select(profile, forceReload = true)
+        load(context)
+    }
+
+    // ---------- профили ----------
+
+    private suspend fun findProfile(key: String, context: Context): Profile? {
+        val id = prefs(context).getLong(key, -1L)
+        return if (id > 0) ProfileManager.get(id) else null
+    }
+
+    private suspend fun syncVpnProfile(context: Context, url: String): Profile {
         val content = HTTPClient().use { it.getString(url) }
         Libbox.checkConfig(content)
+        val profile = writeProfile(context, K_VPN_ID, PROFILE_VPN, TypedProfile.Type.Remote, url, content)
+        select(profile, forceReload = true)
+        return profile
+    }
 
-        var profile = findProfile(context)
+    private suspend fun writeProfile(
+        context: Context,
+        key: String,
+        name: String,
+        type: TypedProfile.Type,
+        url: String?,
+        content: String,
+    ): Profile {
+        var profile = findProfile(key, context)
         if (profile == null) {
             val typed = TypedProfile().apply {
-                type = TypedProfile.Type.Remote
-                remoteURL = url
-                autoUpdate = true
-                autoUpdateInterval = 60
+                this.type = type
+                if (url != null) {
+                    remoteURL = url
+                    autoUpdate = true
+                    autoUpdateInterval = 60
+                }
                 lastUpdated = Date()
             }
             val fileID = ProfileManager.nextFileID()
@@ -206,29 +295,32 @@ object W1ndy {
             val file = File(dir, "$fileID.json")
             file.writeText(content)
             typed.path = file.path
-            profile = Profile(name = PROFILE_NAME, typed = typed).apply {
-                userOrder = ProfileManager.nextOrder()
-            }
-            profile = ProfileManager.create(profile, andSelect = true)
+            profile = ProfileManager.create(
+                Profile(name = name, typed = typed).apply { userOrder = ProfileManager.nextOrder() },
+            )
         } else {
             val file = File(profile.typed.path)
             file.parentFile?.mkdirs()
             file.writeText(content)
-            profile.typed.type = TypedProfile.Type.Remote
-            profile.typed.remoteURL = url
-            profile.typed.autoUpdate = true
+            profile.name = name
+            profile.typed.type = type
+            if (url != null) {
+                profile.typed.remoteURL = url
+                profile.typed.autoUpdate = true
+            }
             profile.typed.lastUpdated = Date()
             ProfileManager.update(profile)
-            if (Settings.selectedProfile != profile.id) {
-                Settings.selectedProfile = profile.id
-            } else {
-                runCatching { Libbox.newStandaloneCommandClient().serviceReload() }
-            }
         }
-        prefs(context).edit()
-            .putLong(K_PROFILE_ID, profile.id)
-            .putString(K_SUB_URL, url)
-            .apply()
-        profile
+        prefs(context).edit().putLong(key, profile.id).apply()
+        return profile
+    }
+
+    /** Делает профиль активным; если VPN уже запущен — перезагружает его с новой конфигурацией. */
+    private fun select(profile: Profile, forceReload: Boolean = false) {
+        val changed = Settings.selectedProfile != profile.id
+        if (changed) Settings.selectedProfile = profile.id
+        if (changed || forceReload) {
+            runCatching { Libbox.newStandaloneCommandClient().serviceReload() }
+        }
     }
 }

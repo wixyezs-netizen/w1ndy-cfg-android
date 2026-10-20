@@ -43,7 +43,7 @@ import io.nekohasekai.sfa.compose.topbar.LocalScaffoldPadding
 import io.nekohasekai.sfa.compose.topbar.OverrideTopBar
 import io.nekohasekai.sfa.constant.Status
 import io.nekohasekai.sfa.utils.RemoteControlManager
-import io.nekohasekai.sfa.w1ndy.W1ndyAccountCard
+import io.nekohasekai.sfa.w1ndy.W1ndyCard
 import kotlinx.coroutines.launch
 
 data class CardRenderItem(val cards: List<CardGroup>, val isRow: Boolean)
@@ -184,7 +184,7 @@ fun DashboardScreen(
                 )
 
             if (!isRemote) {
-                item(key = "w1ndy_account") { W1ndyAccountCard() }
+                item(key = "w1ndy_card") { W1ndyCard() }
             }
 
             items(cardRenderItems) { renderItem ->
