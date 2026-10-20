@@ -93,6 +93,10 @@ object W1ndy {
 
     class ApiException(val code: Int, message: String) : Exception(message)
 
+    /** Сообщение для экрана ввода ключа (например, «срок ключа закончился»). */
+    @Volatile
+    var notice: String? = null
+
     private fun prefs(context: Context): SharedPreferences =
         context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
@@ -265,7 +269,10 @@ object W1ndy {
         try {
             checkAccess(context, token)
         } catch (e: ApiException) {
-            if (e.code == 403) reset(context)
+            if (e.code == 403) {
+                reset(context)
+                notice = e.message
+            }
             throw e
         }
         if (findProfile(K_VPN_ID, context) == null) syncVpnProfile(context, profileUrl(token))
@@ -278,7 +285,10 @@ object W1ndy {
         try {
             checkAccess(context, token)
         } catch (e: ApiException) {
-            if (e.code == 403) reset(context)
+            if (e.code == 403) {
+                reset(context)
+                notice = e.message
+            }
             throw e
         }
         syncVpnProfile(context, profileUrl(token))

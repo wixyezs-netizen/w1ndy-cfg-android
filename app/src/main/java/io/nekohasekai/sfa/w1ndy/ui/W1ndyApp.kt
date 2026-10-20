@@ -209,7 +209,7 @@ private fun Onboarding(initial: Step, onDone: () -> Unit) {
     var dnsChoice by remember { mutableStateOf(if (W1ndy.DNS_PRESETS.any { it.address == saved.dnsServer }) saved.dnsServer else "custom") }
     var customDns by remember { mutableStateOf(if (W1ndy.DNS_PRESETS.any { it.address == saved.dnsServer }) "" else saved.dnsServer) }
     var busy by remember { mutableStateOf(false) }
-    var error by remember { mutableStateOf<String?>(null) }
+    var error by remember { mutableStateOf<String?>(W1ndy.notice.also { W1ndy.notice = null }) }
     var botOpened by remember { mutableStateOf(false) }
 
     val dnsTarget = if (dnsChoice == "custom") customDns else dnsChoice
