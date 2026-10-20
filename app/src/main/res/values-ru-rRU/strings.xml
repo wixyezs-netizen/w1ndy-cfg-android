@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
     <!-- App -->
-    <string name="app_name" translatable="false">sing-box</string>
+    <string name="app_name" translatable="false">W1NDY CFG</string>
     <string name="app_version_title">Версия приложения</string>
     <string name="language">Язык</string>
     <string name="system_default">Системный по умолчанию</string>
@@ -263,10 +263,10 @@
     <string name="background_permission_description">Предоставить необходимые разрешения для корректной работы VPN.\n\nЕсли Вы используете устройство китайского производителя, уведомление может не исчезнуть даже после предоставления разрешения.</string>
     <string name="request_background_permission">Игнорировать оптимизацию батареи</string>
     <string name="location_permission_title">Разрешение на определение местоположения</string>
-    <string name="location_permission_description">Ваш профиль содержит правила маршрутизации &lt;strong&gt;&lt;tt&gt;wifi_ssid&lt;/tt&gt; или &lt;tt&gt;wifi_bssid&lt;/tt&gt;&lt;/strong&gt;. Для их работы sing-box использует разрешение на &lt;strong&gt;определение местоположения&lt;/strong&gt; &lt;strong&gt;в фоновом режиме&lt;/strong&gt;, чтобы получить информацию о подключённой сети Wi-Fi. Эта информация будет использоваться &lt;strong&gt;исключительно для маршрутизации&lt;/strong&gt;.</string>
+    <string name="location_permission_description">Ваш профиль содержит правила маршрутизации &lt;strong&gt;&lt;tt&gt;wifi_ssid&lt;/tt&gt; или &lt;tt&gt;wifi_bssid&lt;/tt&gt;&lt;/strong&gt;. Для их работы W1NDY CFG использует разрешение на &lt;strong&gt;определение местоположения&lt;/strong&gt; &lt;strong&gt;в фоновом режиме&lt;/strong&gt;, чтобы получить информацию о подключённой сети Wi-Fi. Эта информация будет использоваться &lt;strong&gt;исключительно для маршрутизации&lt;/strong&gt;.</string>
     <string name="location_permission_background_description">В Android 10 и новее требуется разрешение на &lt;strong&gt;определение местоположения в фоне&lt;/strong&gt;. Выберите &lt;strong&gt;«Разрешить всегда»&lt;/strong&gt; для предоставления этого разрешения.</string>
     <string name="notification_permission_title">Разрешение на уведомления</string>
-    <string name="notification_permission_required_description">Без разрешения на отправку уведомлений sing-box не сможет отображать скорость сети в реальном времени. Предоставьте разрешение или отключите уведомления о скорости перед запуском службы.</string>
+    <string name="notification_permission_required_description">Без разрешения на отправку уведомлений W1NDY CFG не сможет отображать скорость сети в реальном времени. Предоставьте разрешение или отключите уведомления о скорости перед запуском службы.</string>
     <string name="root_access_required">Требуются права ROOT</string>
     <string name="root_access_denied">Доступ ROOT запрещен</string>
 
@@ -364,7 +364,7 @@
     <string name="error_empty_configuration">Пустая конфигурация</string>
     <string name="error_empty_file">Пустой файл</string>
     <string name="error_decode_profile">Не удалось декодировать профиль: %s</string>
-    <string name="error_invalid_configuration">Недопустимая конфигурация sing-box: %s</string>
+    <string name="error_invalid_configuration">Недопустимая конфигурация W1NDY CFG: %s</string>
     <string name="error_start_command_server">Запуск сервера команд</string>
     <string name="error_create_service">Создание службы</string>
     <string name="error_start_service">Запуск службы</string>
@@ -598,7 +598,7 @@
     <string name="power_report_enable_description">Записывать статистику процессорного времени, пробуждений и трафика сервиса. Отчёт сохраняется для каждого запуска сервиса.</string>
 
     <!-- Xposed Module -->
-    <string name="xposed_description">Привилегированное расширение для sing-box</string>
+    <string name="xposed_description">Привилегированное расширение для W1NDY CFG</string>
 
     <!-- Privileged Enhancement -->
     <string name="privilege_module_title">Привилегированные модули</string>
@@ -676,6 +676,6 @@
     <string name="taildrop_no_files_selected">Файлы не выбраны</string>
     <string name="taildrop_connecting">Подключение…</string>
     <string name="taildrop_dismiss">Закрыть</string>
-    <string name="taildrop_open_app">Открыть sing-box</string>
+    <string name="taildrop_open_app">Открыть W1NDY CFG</string>
     <string name="taildrop_notification_title">Отправка файлов</string>
 </resources>

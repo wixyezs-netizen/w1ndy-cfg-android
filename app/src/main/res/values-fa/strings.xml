@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
     <!-- App -->
-    <string name="app_name" translatable="false">sing-box</string>
+    <string name="app_name" translatable="false">W1NDY CFG</string>
     <string name="app_version_title">نسخه برنامه</string>
     <string name="language">زبان</string>
     <string name="system_default">پیش‌فرض سیستم</string>
@@ -263,10 +263,10 @@
     <string name="background_permission_description">برای کارکرد صحیح VPN، مجوزهای لازم را اعطا کنید.\n\nاگر از دستگاهی ساخت شرکت‌های چینی استفاده می‌کنید، ممکن است این کارت بعد از اعطای مجوز ناپدید نشود.</string>
     <string name="request_background_permission">نادیده گرفتن</string>
     <string name="location_permission_title">مجوز موقعیت مکانی</string>
-    <string name="location_permission_description">پروفایل شما شامل قوانین مسیریابی &lt;strong&gt;&lt;tt&gt;wifi_ssid&lt;/tt&gt; یا &lt;tt&gt;wifi_bssid&lt;/tt&gt;&lt;/strong&gt; است. برای کارکرد آن‌ها، sing-box از مجوز &lt;strong&gt;موقعیت مکانی&lt;/strong&gt; &lt;strong&gt;در پس‌زمینه&lt;/strong&gt; برای دریافت اطلاعات شبکه Wi-Fi متصل استفاده می‌کند. این اطلاعات &lt;strong&gt;فقط برای مسیریابی&lt;/strong&gt; استفاده می‌شوند.</string>
+    <string name="location_permission_description">پروفایل شما شامل قوانین مسیریابی &lt;strong&gt;&lt;tt&gt;wifi_ssid&lt;/tt&gt; یا &lt;tt&gt;wifi_bssid&lt;/tt&gt;&lt;/strong&gt; است. برای کارکرد آن‌ها، W1NDY CFG از مجوز &lt;strong&gt;موقعیت مکانی&lt;/strong&gt; &lt;strong&gt;در پس‌زمینه&lt;/strong&gt; برای دریافت اطلاعات شبکه Wi-Fi متصل استفاده می‌کند. این اطلاعات &lt;strong&gt;فقط برای مسیریابی&lt;/strong&gt; استفاده می‌شوند.</string>
     <string name="location_permission_background_description">در Android 10 و بالاتر، مجوز &lt;strong&gt;موقعیت مکانی پس‌زمینه&lt;/strong&gt; لازم است. برای اعطای مجوز، گزینه &lt;strong&gt;اجازه دائمی&lt;/strong&gt; را انتخاب کنید.</string>
     <string name="notification_permission_title">مجوز اعلان</string>
-    <string name="notification_permission_required_description">بدون مجوز اعلان، sing-box نمی‌تواند سرعت لحظه‌ای شبکه را نمایش دهد. لطفا پیش از شروع سرویس، مجوز را بدهید یا اعلان سرعت لحظه‌ای شبکه را غیرفعال کنید.</string>
+    <string name="notification_permission_required_description">بدون مجوز اعلان، W1NDY CFG نمی‌تواند سرعت لحظه‌ای شبکه را نمایش دهد. لطفا پیش از شروع سرویس، مجوز را بدهید یا اعلان سرعت لحظه‌ای شبکه را غیرفعال کنید.</string>
     <string name="root_access_required">دسترسی Root لازم است</string>
     <string name="root_access_denied">دسترسی Root رد شد</string>
 
@@ -358,7 +358,7 @@
     <string name="error_empty_configuration">پیکربندی خالی است</string>
     <string name="error_empty_file">فایل خالی است</string>
     <string name="error_decode_profile">بازگشایی پروفایل ناموفق بود: %s</string>
-    <string name="error_invalid_configuration">پیکربندی sing-box نامعتبر است: %s</string>
+    <string name="error_invalid_configuration">پیکربندی W1NDY CFG نامعتبر است: %s</string>
     <string name="error_start_command_server">شروع سرور فرمان</string>
     <string name="error_create_service">ایجاد سرویس</string>
     <string name="error_start_service">شروع سرویس</string>
@@ -592,7 +592,7 @@
     <string name="power_report_enable_description">آمار زمان پردازنده، بیدارسازی و ترافیک سرویس را ثبت می‌کند. برای هر اجرای سرویس یک گزارش ذخیره می‌شود.</string>
 
     <!-- Xposed Module -->
-    <string name="xposed_description">بهبود دسترسی ویژه برای sing-box</string>
+    <string name="xposed_description">بهبود دسترسی ویژه برای W1NDY CFG</string>
 
     <!-- Privileged Enhancement -->
     <string name="privilege_module_title">ماژول‌های دسترسی ویژه</string>
@@ -668,6 +668,6 @@
     <string name="taildrop_no_files_selected">فایلی انتخاب نشده است</string>
     <string name="taildrop_connecting">در حال اتصال…</string>
     <string name="taildrop_dismiss">بستن</string>
-    <string name="taildrop_open_app">باز کردن sing-box</string>
+    <string name="taildrop_open_app">باز کردن W1NDY CFG</string>
     <string name="taildrop_notification_title">در حال ارسال فایل‌ها</string>
 </resources>

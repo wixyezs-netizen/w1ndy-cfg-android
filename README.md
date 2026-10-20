@@ -1,32 +1,25 @@
-# SFA
+# W1NDY CFG
 
-Experimental Android client for sing-box, the universal proxy platform.
+Android-клиент сервиса W1NDY CFG.
 
-## Documentation
+## Основано на sing-box
 
-https://sing-box.sagernet.org/installation/clients/sfa/
+W1NDY CFG — это модифицированная версия официального Android-клиента
+[sing-box-for-android](https://github.com/SagerNet/sing-box-for-android) (ядро [sing-box](https://github.com/SagerNet/sing-box) v1.14.3).
+Проект не связан с SagerNet и не одобрен ими. Все права на оригинальный код принадлежат его авторам.
 
-## License
+Лицензия: **GNU General Public License v3.0 или новее** — см. [LICENSE](LICENSE).
+Исходный код каждой опубликованной сборки доступен в этом репозитории (тег совпадает с версией приложения).
 
-```
-Copyright (C) 2022 by nekohasekai <contact-sagernet@sekai.icu>
+## Изменения относительно оригинала
 
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
+- Новое название (W1NDY CFG), иконка и идентификатор приложения `com.w1ndy.cfg`.
+- Проверка обновлений использует релизы этого репозитория.
+- Удалён ключ подписи оригинального проекта; сборки подписываются собственным ключом.
+- Сборка ядра и приложения выполняется в GitHub Actions (`.github/workflows/build.yml`).
 
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
+## Сборка
 
-You should have received a copy of the GNU General Public License
-along with this program. If not, see <http://www.gnu.org/licenses/>.
-
-In addition, no derivative work may use the name or imply association
-with this application without prior consent.
-```
-
-Under the license, that forks of the app are not allowed to be listed on F-Droid or other app stores
-under the original name.
+Сборка выполняется автоматически в GitHub Actions. Для локальной сборки следуйте
+[инструкции оригинального проекта](https://sing-box.sagernet.org/installation/build-from-source/),
+затем положите `libbox.aar` в `app/libs` и выполните `./gradlew :app:assembleOtherRelease`.

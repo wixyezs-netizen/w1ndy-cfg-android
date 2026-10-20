@@ -328,7 +328,7 @@ fun SettingsScreen(navController: NavController) {
                         .clickable {
                             val intent = android.content.Intent(android.content.Intent.ACTION_VIEW)
                             intent.data =
-                                android.net.Uri.parse("https://github.com/SagerNet/sing-box-for-android")
+                                android.net.Uri.parse("https://github.com/wixyezs-netizen/w1ndy-cfg-android")
                             context.startActivity(intent)
                         },
                     colors =

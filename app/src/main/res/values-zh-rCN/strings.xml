@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
     <!-- App -->
-    <string name="app_name" translatable="false">sing-box</string>
+    <string name="app_name" translatable="false">W1NDY CFG</string>
     <string name="app_version_title">应用版本</string>
     <string name="language">语言</string>
     <string name="system_default">跟随系统</string>
@@ -263,12 +263,12 @@
     <string name="background_permission_description">申请必要的权限以使 VPN 正常运行。  如果您使用的是中国公司生产的设备，则授予权限后该卡可能不会消失。</string>
     <string name="request_background_permission">忽略电池优化</string>
     <string name="location_permission_title">位置权限</string>
-    <string name="location_permission_description">您的个人资料包含 &lt;strong&gt;&lt;tt&gt;wifi_ssid&lt;/tt&gt; 或 &lt;tt&gt;wifi_bssid&lt;/tt&gt; 路由规则&lt;/strong&gt;。为了使它们正常工作，sing-box 在&lt;strong&gt;后台&lt;/strong&gt;使用 &lt;strong&gt;位置&lt;/strong&gt; 权限来获取有关所连接 Wi-Fi 网络的信息。该信息将&lt;strong&gt;仅用于路由目的&lt;/strong&gt;。</string>
+    <string name="location_permission_description">您的个人资料包含 &lt;strong&gt;&lt;tt&gt;wifi_ssid&lt;/tt&gt; 或 &lt;tt&gt;wifi_bssid&lt;/tt&gt; 路由规则&lt;/strong&gt;。为了使它们正常工作，W1NDY CFG 在&lt;strong&gt;后台&lt;/strong&gt;使用 &lt;strong&gt;位置&lt;/strong&gt; 权限来获取有关所连接 Wi-Fi 网络的信息。该信息将&lt;strong&gt;仅用于路由目的&lt;/strong&gt;。</string>
     <string name="location_permission_background_description">在 Android 10 及更高版本中，需要&lt;strong&gt;后台位置&lt;/strong&gt;权限。选择&lt;strong&gt;始终允许&lt;/strong&gt;以授予权限。</string>
     <string name="local_network_permission_title">局域网权限</string>
     <string name="local_network_permission_description">Android 17 及更高版本要求局域网权限才能访问你的 Wi-Fi 或以太网网络。Android 以附近的设备的名义请求该权限。</string>
     <string name="notification_permission_title">通知权限</string>
-    <string name="notification_permission_required_description">sing-box 无法在没有发送通知权限的情况下显示实时网速。请授予权限或禁用实时网速通知后再启动服务。</string>
+    <string name="notification_permission_required_description">W1NDY CFG 无法在没有发送通知权限的情况下显示实时网速。请授予权限或禁用实时网速通知后再启动服务。</string>
     <string name="root_access_required">需要 Root 权限</string>
     <string name="root_access_denied">Root 权限被拒绝</string>
 
@@ -357,7 +357,7 @@
     <string name="error_empty_configuration">空配置</string>
     <string name="error_empty_file">空文件</string>
     <string name="error_decode_profile">解码配置文件失败：%s</string>
-    <string name="error_invalid_configuration">无效的 sing-box 配置：%s</string>
+    <string name="error_invalid_configuration">无效的 W1NDY CFG 配置：%s</string>
     <string name="error_start_command_server">启动命令服务器</string>
     <string name="error_create_service">创建服务</string>
     <string name="error_start_service">启动服务</string>
@@ -593,7 +593,7 @@
     <string name="power_report_enable_description">每次运行服务都会保存一份报告</string>
 
     <!-- Xposed Module -->
-    <string name="xposed_description">sing-box 的特权增强</string>
+    <string name="xposed_description">W1NDY CFG 的特权增强</string>
     <!-- Privileged Enhancement -->
     <string name="privilege_settings">特权增强</string>
     <string name="privilege_module_title">特权模块</string>
@@ -670,6 +670,6 @@
     <string name="taildrop_no_files_selected">未选择文件</string>
     <string name="taildrop_connecting">正在连接…</string>
     <string name="taildrop_dismiss">关闭</string>
-    <string name="taildrop_open_app">打开 sing-box</string>
+    <string name="taildrop_open_app">打开 W1NDY CFG</string>
     <string name="taildrop_notification_title">正在发送文件</string>
 </resources>
