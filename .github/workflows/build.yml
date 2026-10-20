@@ -187,6 +187,7 @@ jobs:
             mkdir -p shots
             adb install -r apk/*-x86_64.apk
             adb logcat -c
+            adb shell cmd locale set-app-locales com.w1ndy.cfg --locales ru-RU || true
             adb shell monkey -p com.w1ndy.cfg -c android.intent.category.LAUNCHER 1
             sleep 20
             adb exec-out screencap -p > shots/1-main.png

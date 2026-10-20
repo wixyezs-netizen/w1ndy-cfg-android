@@ -2,7 +2,6 @@ package io.nekohasekai.sfa.compose.theme
 
 import android.app.Activity
 import android.os.Build
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.dynamicDarkColorScheme
@@ -66,7 +65,8 @@ private val LightColorScheme =
 
 @Composable
 fun Theme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
+    // W1NDY CFG: фирменная тёмная тема всегда
+    darkTheme: Boolean = true,
     // Dynamic color is available on Android 12+
     dynamicColor: Boolean = false,
     content: @Composable () -> Unit,
