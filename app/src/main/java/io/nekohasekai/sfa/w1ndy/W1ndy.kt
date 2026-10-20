@@ -28,6 +28,9 @@ import java.util.UUID
  */
 object W1ndy {
     const val BASE_URL = "https://site.litenergyapp.store"
+    const val BOT_URL = "https://t.me/VPN_LitEnergy_bot"
+    const val CHANNEL_URL = "https://t.me/+65OxDmkfjv04ZDhh"
+    const val APK_URL = "https://site.litenergyapp.store/download/W1NDY-CFG.apk"
     private const val PROFILE_VPN = "W1NDY VPN"
     private const val PROFILE_DNS = "W1NDY DNS"
 
@@ -51,13 +54,23 @@ object W1ndy {
     private const val K_DNS = "dns_server"
     private const val K_VPN_ID = "vpn_profile_id"
     private const val K_DNS_ID = "dns_profile_id"
+    private const val K_TG = "tg_linked"
+    private const val K_TG_NAME = "tg_name"
+    private const val K_ONBOARDED = "onboarded"
+    private const val K_CONNECTED_AT = "connected_at"
 
     data class State(
         val activated: Boolean,
         val confName: String,
         val mode: String,
         val dnsServer: String,
-    )
+        val tgLinked: Boolean = false,
+        val tgName: String = "",
+        val onboarded: Boolean = false,
+    ) {
+        /** Название профиля на главном экране. */
+        val title: String get() = if (mode == MODE_DNS) "DNS · $dnsServer" else confName.ifEmpty { "W1NDY VPN" }
+    }
 
     class ApiException(val code: Int, message: String) : Exception(message)
 
@@ -71,7 +84,47 @@ object W1ndy {
             confName = p.getString(K_NAME, "") ?: "",
             mode = p.getString(K_MODE, MODE_VPN) ?: MODE_VPN,
             dnsServer = p.getString(K_DNS, DNS_PRESETS[0].address) ?: DNS_PRESETS[0].address,
+            tgLinked = p.getBoolean(K_TG, false),
+            tgName = p.getString(K_TG_NAME, "") ?: "",
+            onboarded = p.getBoolean(K_ONBOARDED, false),
         )
+    }
+
+    fun setOnboarded(context: Context, value: Boolean) {
+        prefs(context).edit().putBoolean(K_ONBOARDED, value).apply()
+    }
+
+    /** Время подключения для таймера на главном экране. */
+    fun connectedAt(context: Context, connected: Boolean): Long {
+        val p = prefs(context)
+        if (!connected) {
+            p.edit().remove(K_CONNECTED_AT).apply()
+            return 0L
+        }
+        val t = p.getLong(K_CONNECTED_AT, 0L)
+        if (t > 0) return t
+        val now = System.currentTimeMillis()
+        p.edit().putLong(K_CONNECTED_AT, now).apply()
+        return now
+    }
+
+    /** Ссылка на «Старт» в @VPN_LitEnergy_bot для этой установки. */
+    suspend fun telegramLink(context: Context): String = withContext(Dispatchers.IO) {
+        val j = request("POST", "/api/w1ndy/tg/start", JSONObject().put("install_id", installId(context)))
+        val url = j.optString("url").ifEmpty { throw ApiException(500, "Не удалось получить ссылку") }
+        // одноразовый код привязки; нужен автотесту сборки (логи доступны только через adb)
+        android.util.Log.i("W1NDY", "tg-link " + url.substringAfter("w1_", ""))
+        url
+    }
+
+    /** true — пользователь нажал «Старт» в боте. */
+    suspend fun telegramLinked(context: Context): Boolean = withContext(Dispatchers.IO) {
+        val j = request("GET", "/api/w1ndy/tg/poll?install_id=" + URLEncoder.encode(installId(context), "UTF-8"))
+        val linked = j.optBoolean("linked", false)
+        if (linked) {
+            prefs(context).edit().putBoolean(K_TG, true).putString(K_TG_NAME, j.optString("name")).apply()
+        }
+        linked
     }
 
     private fun installId(context: Context): String {
@@ -179,6 +232,12 @@ object W1ndy {
     suspend fun reset(context: Context) = withContext(Dispatchers.IO) {
         findProfile(K_VPN_ID, context)?.let { ProfileManager.delete(it) }
         prefs(context).edit().remove(K_TOKEN).remove(K_NAME).remove(K_VPN_ID).apply()
+    }
+
+    /** «Выйти»: удалить ключ и вернуться к экранам входа. */
+    suspend fun logout(context: Context) = withContext(Dispatchers.IO) {
+        reset(context)
+        prefs(context).edit().putBoolean(K_ONBOARDED, false).apply()
     }
 
     /** Переключение режима VPN / только DNS. */

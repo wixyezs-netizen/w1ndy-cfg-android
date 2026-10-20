@@ -251,7 +251,7 @@ class MainActivity :
 
             setContent {
                 Theme {
-                    App()
+                    W1ndyHost()
                 }
             }
         }
@@ -1574,6 +1574,44 @@ class MainActivity :
     override fun onDestroy() {
         connection.disconnect()
         super.onDestroy()
+    }
+
+    /** W1NDY CFG: свой интерфейс (вход + профиль) вместо стандартных вкладок; запуск VPN и системные диалоги — прежние. */
+    @Composable
+    private fun W1ndyHost() {
+        io.nekohasekai.sfa.w1ndy.ui.W1ndyApp(
+            status = currentServiceStatus,
+            onConnect = { startService() },
+            onDisconnect = { BoxService.stop() },
+        )
+        currentAlert?.let { (alertType, message) ->
+            ServiceAlertDialog(alertType = alertType, message = message, onDismiss = { currentAlert = null })
+        }
+        if (showLocationPermissionDialog) {
+            LocationPermissionDialog(onConfirm = {
+                showLocationPermissionDialog = false
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                    locationPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+                }
+            }, onDismiss = { showLocationPermissionDialog = false })
+        }
+        if (showBackgroundLocationDialog) {
+            BackgroundLocationPermissionDialog(onConfirm = {
+                showBackgroundLocationDialog = false
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    backgroundLocationPermissionLauncher.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+                }
+            }, onDismiss = { showBackgroundLocationDialog = false })
+        }
+        if (showLocalNetworkPermissionDialog) {
+            LocalNetworkPermissionDialog(onConfirm = {
+                showLocalNetworkPermissionDialog = false
+                localNetworkPermissionLauncher.launch(Manifest.permission.ACCESS_LOCAL_NETWORK)
+            }, onDismiss = {
+                showLocalNetworkPermissionDialog = false
+                startService()
+            })
+        }
     }
 
     @Composable

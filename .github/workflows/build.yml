@@ -182,22 +182,24 @@ jobs:
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           script: bash -c "$SMOKE"
         env:
+          W1NDY_TEST_SECRET: ${{ secrets.W1NDY_TEST_SECRET }}
           SMOKE: |
             set -x
             mkdir -p shots
             adb install -r apk/*-x86_64.apk
             adb logcat -c
             adb shell cmd locale set-app-locales com.w1ndy.cfg --locales ru-RU || true
-            adb shell monkey -p com.w1ndy.cfg -c android.intent.category.LAUNCHER 1
-            sleep 20
-            adb exec-out screencap -p > shots/1-main.png
             cat > tap.py <<'PY'
             import re, subprocess, sys, time
             def dump():
                 subprocess.run("adb shell uiautomator dump /sdcard/ui.xml", shell=True, capture_output=True)
                 return subprocess.run("adb exec-out cat /sdcard/ui.xml", shell=True, capture_output=True).stdout.decode("utf-8", "ignore")
             def find(s, text):
-                m = re.search(r'text="' + re.escape(text) + r'"[^>]*bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]"', s)
+                if text.startswith("class:"):
+                    pat = r'class="' + re.escape(text[6:]) + r'"'
+                else:
+                    pat = r'(?:text|content-desc)="' + re.escape(text) + r'"'
+                m = re.search(pat + r'[^>]*bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]"', s)
                 return None if not m else ((int(m[1]) + int(m[3])) // 2, (int(m[2]) + int(m[4])) // 2)
             for _ in range(5):
                 s = dump()
@@ -210,21 +212,39 @@ jobs:
             print("tapped" if xy else "not found", sys.argv[1])
             PY
             sed -i 's/^            //' tap.py
-            python3 tap.py "Главная"; sleep 2
-            adb exec-out screencap -p > shots/1-main.png
-            python3 tap.py "Код доступа"; sleep 1
+            shot() { adb exec-out screencap -p > "shots/$1.png"; }
+            adb shell monkey -p com.w1ndy.cfg -c android.intent.category.LAUNCHER 1
+            sleep 20
+            python3 tap.py "__none__"; sleep 1
+            shot 1-welcome
+            python3 tap.py "VPN"; sleep 2
+            python3 tap.py "class:android.widget.EditText"; sleep 1
             adb shell input text "TEST2345"; sleep 1
-            adb shell input keyevent 111; sleep 1
-            adb exec-out screencap -p > shots/2-code.png
-            python3 tap.py "Активировать"; sleep 6
-            adb exec-out screencap -p > shots/3-bad-code.png
-            python3 tap.py "Только DNS"; sleep 3
-            adb exec-out screencap -p > shots/4-dns.png
-            python3 tap.py "Применить"; sleep 3
-            adb exec-out screencap -p > shots/5-dns-applied.png
-            adb shell pidof com.w1ndy.cfg && echo "APP_ALIVE=1" | tee shots/status.txt || echo "APP_ALIVE=0" | tee shots/status.txt
+            shot 2-key
+            python3 tap.py "Продолжить"; sleep 6
+            shot 3-bad-key
+            adb shell input keyevent 4; sleep 2
+            python3 tap.py "Только DNS"; sleep 2
+            shot 4-dns
+            python3 tap.py "Продолжить"; sleep 4
+            shot 5-telegram
+            python3 tap.py "Открыть бота"; sleep 6
+            N=$(adb logcat -d -s W1NDY:I | grep -o 'tg-link [0-9a-f]*' | tail -1 | cut -d' ' -f2)
+            echo "nonce_len=${#N}"
+            curl -s -X POST https://site.litenergyapp.store/api/w1ndy/tg/test-link -H "X-W1ndy-Test: $W1NDY_TEST_SECRET" -H "Content-Type: application/json" -H "User-Agent: w1ndy-ci" -d "{\"nonce\":\"$N\"}"; echo
+            adb shell monkey -p com.w1ndy.cfg -c android.intent.category.LAUNCHER 1; sleep 10
+            python3 tap.py "__none__"
+            shot 6-home
+            python3 tap.py "Подключить"; sleep 4
+            shot 7-permission
+            python3 tap.py "OK"; sleep 8
+            shot 8-connected
+            adb shell dumpsys connectivity | grep -c "VPN" | sed 's/^/vpn_lines=/' | tee -a shots/status.txt || true
+            python3 tap.py "Настройки"; sleep 3
+            shot 9-settings
+            adb shell pidof com.w1ndy.cfg && echo "APP_ALIVE=1" | tee -a shots/status.txt || echo "APP_ALIVE=0" | tee -a shots/status.txt
             adb logcat -d -b crash > shots/crash.txt || true
-            adb logcat -d | grep -iE "AndroidRuntime|FATAL|w1ndy" | tail -200 > shots/logcat.txt || true
+            adb logcat -d | grep -iE "AndroidRuntime|FATAL|w1ndy|sing-box|libbox" | grep -v "tg-link" | tail -300 > shots/logcat.txt || true
       - name: Upload screenshots
         if: always()
         uses: actions/upload-artifact@v4
