@@ -10,30 +10,65 @@ import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
+// W1NDY CFG: монохромная тема (белые кнопки на чёрном фоне)
 private val DarkColorScheme =
     darkColorScheme(
-        primary = SingBoxPrimary,
-        secondary = SingBoxPrimaryLight,
-        tertiary = LogBlue,
+        primary = Color(0xFFFFFFFF),
+        onPrimary = Color(0xFF000000),
+        primaryContainer = Color(0xFF2C2C2E),
+        onPrimaryContainer = Color(0xFFFFFFFF),
+        secondary = Color(0xFFD1D1D6),
+        onSecondary = Color(0xFF000000),
+        secondaryContainer = Color(0xFF2C2C2E),
+        onSecondaryContainer = Color(0xFFFFFFFF),
+        tertiary = Color(0xFF34C759),
+        background = Color(0xFF000000),
+        onBackground = Color(0xFFFFFFFF),
+        surface = Color(0xFF000000),
+        onSurface = Color(0xFFFFFFFF),
+        surfaceVariant = Color(0xFF1C1C1E),
+        onSurfaceVariant = Color(0xFF8E8E93),
+        surfaceContainerLowest = Color(0xFF000000),
+        surfaceContainerLow = Color(0xFF111111),
+        surfaceContainer = Color(0xFF161616),
+        surfaceContainerHigh = Color(0xFF1C1C1E),
+        surfaceContainerHighest = Color(0xFF2C2C2E),
+        outline = Color(0xFF3A3A3C),
+        outlineVariant = Color(0xFF2C2C2E),
     )
 
 private val LightColorScheme =
     lightColorScheme(
-        primary = SingBoxPrimary,
-        secondary = SingBoxPrimaryDark,
-        tertiary = LogBlue,
+        primary = Color(0xFF000000),
+        onPrimary = Color(0xFFFFFFFF),
+        primaryContainer = Color(0xFFE5E5EA),
+        onPrimaryContainer = Color(0xFF000000),
+        secondary = Color(0xFF3A3A3C),
+        secondaryContainer = Color(0xFFE5E5EA),
+        onSecondaryContainer = Color(0xFF000000),
+        tertiary = Color(0xFF248A3D),
+        background = Color(0xFFFFFFFF),
+        surface = Color(0xFFFFFFFF),
+        surfaceVariant = Color(0xFFF2F2F7),
+        onSurfaceVariant = Color(0xFF6C6C70),
+        surfaceContainerLowest = Color(0xFFFFFFFF),
+        surfaceContainerLow = Color(0xFFF7F7F9),
+        surfaceContainer = Color(0xFFF2F2F7),
+        surfaceContainerHigh = Color(0xFFEBEBF0),
+        surfaceContainerHighest = Color(0xFFE5E5EA),
     )
 
 @Composable
 fun Theme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     // Dynamic color is available on Android 12+
-    dynamicColor: Boolean = true,
+    dynamicColor: Boolean = false,
     content: @Composable () -> Unit,
 ) {
     val colorScheme =

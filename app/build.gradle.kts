@@ -132,7 +132,7 @@ android {
             isEnable = true
             isUniversalApk = true
             reset()
-            include("armeabi-v7a", "arm64-v8a", "x86", "x86_64")
+            include("armeabi-v7a", "arm64-v8a", "x86_64")
         }
     }
 
@@ -157,6 +157,8 @@ android {
     packaging {
         jniLibs {
             useLegacyPackaging = true
+            // ядро собирается только для arm64, arm и x86_64
+            excludes += "lib/x86/**"
         }
     }
 
