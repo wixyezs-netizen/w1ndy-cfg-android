@@ -30,6 +30,7 @@ object W1ndy {
     const val BASE_URL = "https://site.litenergyapp.store"
     const val BOT_URL = "https://t.me/VPN_LitEnergy_bot"
     const val CHANNEL_URL = "https://t.me/windytoptop"
+    const val SHOP_URL = "https://t.me/WindyCfg_bot"
     const val APK_URL = "https://site.litenergyapp.store/download/W1NDY-CFG.apk"
     private const val PROFILE_VPN = "W1NDY VPN"
     private const val PROFILE_DNS = "W1NDY DNS"
@@ -58,6 +59,8 @@ object W1ndy {
     private const val K_TG_NAME = "tg_name"
     private const val K_ONBOARDED = "onboarded"
     private const val K_CONNECTED_AT = "connected_at"
+    private const val K_EXPIRES = "expires_at"
+    private const val K_PLAN = "plan"
 
     data class State(
         val activated: Boolean,
@@ -67,7 +70,23 @@ object W1ndy {
         val tgLinked: Boolean = false,
         val tgName: String = "",
         val onboarded: Boolean = false,
+        /** Окончание доступа, секунды Unix (0 — бессрочно / неизвестно). */
+        val expiresAt: Long = 0,
+        val plan: String = "",
     ) {
+        /** Сколько дней осталось (null — бессрочно). */
+        val daysLeft: Int?
+            get() = if (expiresAt <= 0) null else
+                kotlin.math.ceil((expiresAt * 1000 - System.currentTimeMillis()) / 86_400_000.0).toInt().coerceAtLeast(0)
+
+        /** Строка срока для карточки на главном экране. */
+        val accessLine: String
+            get() {
+                if (expiresAt <= 0) return if (plan.isEmpty()) "Бессрочный доступ" else "$plan · бессрочно"
+                val until = "до " + java.text.SimpleDateFormat("d MMMM", java.util.Locale("ru")).format(java.util.Date(expiresAt * 1000))
+                return if (plan.isEmpty()) "Доступ $until" else "$plan $until"
+            }
+
         /** Название профиля на главном экране. */
         val title: String get() = if (mode == MODE_DNS) "DNS · $dnsServer" else confName.ifEmpty { "W1NDY VPN" }
     }
@@ -87,6 +106,8 @@ object W1ndy {
             tgLinked = p.getBoolean(K_TG, false),
             tgName = p.getString(K_TG_NAME, "") ?: "",
             onboarded = p.getBoolean(K_ONBOARDED, false),
+            expiresAt = p.getLong(K_EXPIRES, 0),
+            plan = p.getString(K_PLAN, "") ?: "",
         )
     }
 
@@ -218,6 +239,7 @@ object W1ndy {
             .putString(K_MODE, MODE_VPN)
             .apply()
         syncVpnProfile(context, profileUrl(token))
+        runCatching { checkAccess(context, token) } // срок и тариф для экрана
         load(context)
     }
 
@@ -225,9 +247,13 @@ object W1ndy {
     private fun checkAccess(context: Context, token: String) {
         try {
             val j = request("GET", "/api/w1ndy/status?t=" + URLEncoder.encode(token, "UTF-8"))
-            prefs(context).edit().putString(K_NAME, j.optString("name")).apply()
+            prefs(context).edit()
+                .putString(K_NAME, j.optString("name"))
+                .putLong(K_EXPIRES, if (j.isNull("expires_at")) 0L else j.optLong("expires_at", 0L))
+                .putString(K_PLAN, j.optString("plan"))
+                .apply()
         } catch (e: ApiException) {
-            if (e.code == 403) throw ApiException(403, "Доступ отключён администратором. Введите новый код.")
+            if (e.code == 403) throw ApiException(403, e.message?.takeIf { it.isNotBlank() } ?: "Доступ отключён. Введите новый ключ.")
             throw e
         }
     }
@@ -262,7 +288,7 @@ object W1ndy {
     /** Забыть код и удалить профиль VPN. */
     suspend fun reset(context: Context) = withContext(Dispatchers.IO) {
         findProfile(K_VPN_ID, context)?.let { ProfileManager.delete(it) }
-        prefs(context).edit().remove(K_TOKEN).remove(K_NAME).remove(K_VPN_ID).apply()
+        prefs(context).edit().remove(K_TOKEN).remove(K_NAME).remove(K_VPN_ID).remove(K_EXPIRES).remove(K_PLAN).apply()
     }
 
     /** «Выйти»: удалить ключ и вернуться к экранам входа. */

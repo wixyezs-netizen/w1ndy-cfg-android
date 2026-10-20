@@ -9,8 +9,7 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.Image
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -39,7 +38,11 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.Send
 import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.rounded.Air
 import androidx.compose.material.icons.rounded.Bolt
+import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.ShoppingCart
+import androidx.compose.material.icons.rounded.SwapVert
 import androidx.compose.material.icons.rounded.Menu
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.Campaign
@@ -60,10 +63,8 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.Text
-import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
@@ -71,6 +72,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -85,12 +87,9 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.withStyle
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
@@ -98,29 +97,25 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.nekohasekai.sfa.BuildConfig
-import io.nekohasekai.sfa.R
 import io.nekohasekai.sfa.constant.Status
 import io.nekohasekai.sfa.update.UpdateState
 import io.nekohasekai.sfa.w1ndy.W1ndy
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlin.math.floor
+import kotlin.math.sin
 
-// Палитра «космос»: чёрный фон со звёздами, стекло, синее свечение
+// Палитра как в мини-приложении: чёрный фон, тёмные карточки, белые акценты
 private val Bg = Color(0xFF000000)
-private val Surface = Color(0xB3060A14)
-private val Raised = Color(0xFF0A1120)
-private val Pill = Color(0xFF14213A)
-private val Border = Color(0x553D8BFF)
-private val BorderHover = Color(0x803D8BFF)
+private val Surface = Color(0xFF161616)
+private val Raised = Color(0xFF0E0E0E)
+private val Pill = Color(0xFF222222)
+private val Border = Color(0x14FFFFFF)
+private val BorderHover = Color(0x2EFFFFFF)
 private val TextMain = Color(0xFFFFFFFF)
-private val Muted = Color(0xFFB4C0D3)
-private val Dim = Color(0xFF6E7B91)
-private val Blue = Color(0xFF2F86FF)
-private val BlueLight = Color(0xFF4FA3FF)
-private val Chrome = Color(0xFFDCE6F2)
-private val Green = BlueLight
-private val Red = Color(0xFFFF5C5C)
-private val Mono = FontFamily.Monospace
+private val Muted = Color(0xFF8E8E93)
+private val Dim = Color(0xFF636366)
+private val Red = Color(0xFFEF4444)
 
 private fun open(context: Context, url: String) {
     runCatching {
@@ -137,13 +132,7 @@ fun W1ndyApp(status: Status, onConnect: () -> Unit, onDisconnect: () -> Unit) {
     var state by remember { mutableStateOf(W1ndy.load(context)) }
     var startStep by remember { mutableStateOf(Step.Mode) }
     Box(Modifier.fillMaxSize().background(Bg)) {
-        Image(
-            painter = painterResource(R.drawable.w1ndy_space),
-            contentDescription = null,
-            contentScale = ContentScale.Crop,
-            modifier = Modifier.fillMaxSize(),
-        )
-        CompositionLocalProvider(LocalTextStyle provides LocalTextStyle.current.copy(fontFamily = Mono)) {
+        FallingDots()
         if (!state.onboarded) {
             Onboarding(initial = startStep, onDone = {
                 state = W1ndy.load(context)
@@ -163,7 +152,47 @@ fun W1ndyApp(status: Status, onConnect: () -> Unit, onDisconnect: () -> Unit) {
                 },
             )
         }
+    }
+}
+
+/** Падающие белые точки в верхней четверти экрана. */
+@Composable
+private fun FallingDots(count: Int = 46, zone: Float = 0.25f) {
+    var time by remember { mutableStateOf(0f) }
+    LaunchedEffect(Unit) {
+        val start = withFrameNanos { it }
+        while (true) {
+            withFrameNanos { now -> time = (now - start) / 1_000_000_000f }
         }
+    }
+    Canvas(Modifier.fillMaxSize()) {
+        val h = size.height * zone
+        val density = this.density
+        for (i in 0 until count) {
+            val seed = i.toDouble()
+            val x = fract(sin(seed * 12.9898) * 43758.5453).toFloat() * size.width
+            val speed = (14 + fract(sin(seed * 78.233) * 12345.678) * 30).toFloat() * density // px/s
+            val phase = fract(sin(seed * 3.17) * 9876.54).toFloat()
+            val r = (0.7f + fract(sin(seed * 5.71) * 4567.89).toFloat() * 1.3f) * density
+            val progress = fract((time * speed / h + phase).toDouble()).toFloat()
+            val alpha = (1f - progress) * (0.35f + 0.55f * fract(sin(seed * 9.1) * 777.7).toFloat())
+            drawCircle(Color.White.copy(alpha = alpha), r, Offset(x, progress * h))
+        }
+    }
+}
+
+private fun fract(v: Double): Double = v - floor(v)
+
+/** Плитка с символом и название — как шапка мини-приложения. */
+@Composable
+private fun BrandHeader() {
+    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
+        Box(
+            Modifier.size(76.dp).clip(RoundedCornerShape(22.dp)).background(Surface).border(1.dp, Border, RoundedCornerShape(22.dp)),
+            contentAlignment = Alignment.Center,
+        ) { Icon(Icons.Rounded.Air, contentDescription = null, tint = TextMain, modifier = Modifier.size(40.dp)) }
+        Spacer(Modifier.height(18.dp))
+        Text("W1NDY CFG", color = TextMain, fontSize = 30.sp, fontWeight = FontWeight.Black)
     }
 }
 
@@ -279,15 +308,10 @@ private fun Onboarding(initial: Step, onDone: () -> Unit) {
         when (step) {
             Step.Mode -> {
                 Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-                    Spacer(Modifier.height(32.dp))
-                    Image(
-                        painter = painterResource(R.drawable.w1ndy_logo),
-                        contentDescription = "W1NDY",
-                        contentScale = ContentScale.Fit,
-                        modifier = Modifier.fillMaxWidth(0.86f),
-                    )
-                    Spacer(Modifier.height(18.dp))
-                    Text("ВЫБЕРИТЕ, КАК ПОДКЛЮЧИТЬСЯ", color = Muted, fontSize = 14.sp, letterSpacing = 1.sp)
+                    Spacer(Modifier.height(28.dp))
+                    BrandHeader()
+                    Spacer(Modifier.height(10.dp))
+                    Text("Выберите, как подключиться", color = Muted, fontSize = 16.sp)
                 }
                 Spacer(Modifier.height(32.dp))
                 ChoiceCard(Icons.Rounded.Shield, "VPN", "Защищённое подключение по ключу доступа") {
@@ -308,7 +332,7 @@ private fun Onboarding(initial: Step, onDone: () -> Unit) {
             }
 
             Step.Key -> {
-                StepHeader("Ключ доступа", "Вставьте ключ, который вы получили от администратора. Он выглядит так: ABCD-EFGH")
+                StepHeader("Ключ доступа", "Вставьте ключ из бота @WindyCfg_bot. Он выглядит так: ABCD-EFGH")
                 Spacer(Modifier.height(24.dp))
                 val clipboard = LocalClipboardManager.current
                 OutlinedTextField(
@@ -331,12 +355,14 @@ private fun Onboarding(initial: Step, onDone: () -> Unit) {
                 ErrorText(error)
                 Spacer(Modifier.height(20.dp))
                 PrimaryButton("Продолжить", busy, enabled = key.count { it.isLetterOrDigit() } >= 8) { next() }
+                Spacer(Modifier.height(12.dp))
+                PillButton(Icons.Rounded.ShoppingCart, "Купить ключ") { open(context, W1ndy.SHOP_URL) }
             }
 
             Step.Dns -> {
                 StepHeader("DNS-сервер", "DNS-запросы телефона пойдут через выбранный сервер, остальной трафик — напрямую.")
                 Spacer(Modifier.height(20.dp))
-                Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(Surface).border(1.dp, Border, RoundedCornerShape(20.dp)).padding(vertical = 6.dp)) {
+                Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(Surface).border(1.dp, Border, RoundedCornerShape(24.dp)).padding(vertical = 6.dp)) {
                     W1ndy.DNS_PRESETS.forEach { p ->
                         DnsRow(p.title, p.address, dnsChoice == p.address) { dnsChoice = p.address }
                     }
@@ -443,32 +469,23 @@ private fun Home(
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
                     // верхняя панель: меню и настройки
-                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        IconButton(onClick = { showMenu = true }) {
-                            Icon(Icons.Rounded.Menu, contentDescription = "Меню", tint = TextMain, modifier = Modifier.size(30.dp))
-                        }
+                    Row(Modifier.fillMaxWidth().padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                        RoundIconButton(Icons.Rounded.Menu, "Меню") { showMenu = true }
                         Spacer(Modifier.weight(1f))
-                        IconButton(onClick = { showSettings = true }) {
-                            Icon(Icons.Outlined.Settings, contentDescription = "Настройки", tint = TextMain, modifier = Modifier.size(28.dp))
-                        }
+                        RoundIconButton(Icons.Outlined.Settings, "Настройки") { showSettings = true }
                     }
 
                     if (hasUpdate && updateInfo != null) {
-                        Spacer(Modifier.height(8.dp))
-                        GlowPill(Icons.Rounded.SystemUpdate, "Доступна версия", updateInfo?.versionName ?: "") {
+                        Spacer(Modifier.height(10.dp))
+                        LinkCard(Icons.Rounded.SystemUpdate, "Доступна версия ${updateInfo?.versionName ?: ""}", "Нажмите, чтобы скачать") {
                             open(context, updateInfo?.downloadUrl?.ifEmpty { null } ?: W1ndy.APK_URL)
                         }
                     }
 
-                    Spacer(Modifier.height(if (hasUpdate) 18.dp else 40.dp))
-                    Image(
-                        painter = painterResource(R.drawable.w1ndy_logo),
-                        contentDescription = "W1NDY",
-                        contentScale = ContentScale.Fit,
-                        modifier = Modifier.fillMaxWidth(0.84f),
-                    )
-                    Spacer(Modifier.height(10.dp))
-                    StatusLine(status, state)
+                    Spacer(Modifier.height(if (hasUpdate) 14.dp else 6.dp))
+                    BrandHeader()
+                    Spacer(Modifier.height(26.dp))
+                    StatusCard(status, state) { onRestart(Step.Mode) }
                     Spacer(Modifier.height(30.dp))
                     ConnectButton(status) {
                         message = null
@@ -486,9 +503,9 @@ private fun Home(
 
                 // плашки внизу
                 Column(Modifier.padding(top = 28.dp, bottom = 8.dp)) {
-                    GlowPill(Icons.AutoMirrored.Rounded.Send, "Наш Telegram-канал", "@windytoptop") { open(context, W1ndy.CHANNEL_URL) }
-                    Spacer(Modifier.height(14.dp))
-                    GlowPill(Icons.Rounded.Bolt, "LitEnergy VPN", "@VPN_LitEnergy_bot") { open(context, W1ndy.BOT_URL) }
+                    LinkCard(Icons.AutoMirrored.Rounded.Send, "Наш Telegram-канал", "@windytoptop") { open(context, W1ndy.CHANNEL_URL) }
+                    Spacer(Modifier.height(12.dp))
+                    LinkCard(Icons.Rounded.Bolt, "LitEnergy VPN", "@VPN_LitEnergy_bot") { open(context, W1ndy.BOT_URL) }
                 }
             }
         }
@@ -497,8 +514,9 @@ private fun Home(
     if (showMenu) {
         ModalBottomSheet(onDismissRequest = { showMenu = false }, containerColor = Raised) {
             Column(Modifier.padding(horizontal = 20.dp).padding(bottom = 28.dp)) {
-                Text("Меню", color = TextMain, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                Text("Меню", color = TextMain, fontSize = 22.sp, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.height(16.dp))
+                SheetItem("Купить или продлить ключ", "Бот W1NDY CFG · @WindyCfg_bot") { showMenu = false; open(context, W1ndy.SHOP_URL) }
                 SheetItem("Наш Telegram-канал", "Новости и обновления · @windytoptop") { showMenu = false; open(context, W1ndy.CHANNEL_URL) }
                 SheetItem("LitEnergy VPN", "Быстрый и стабильный VPN · @VPN_LitEnergy_bot") { showMenu = false; open(context, W1ndy.BOT_URL) }
                 SheetItem("Скачать последнюю версию", "Установочный файл для Android") { showMenu = false; open(context, W1ndy.APK_URL) }
@@ -511,7 +529,7 @@ private fun Home(
     if (showSettings) {
         ModalBottomSheet(onDismissRequest = { showSettings = false }, containerColor = Raised) {
             Column(Modifier.padding(horizontal = 20.dp).padding(bottom = 28.dp)) {
-                Text("Настройки", color = TextMain, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                Text("Настройки", color = TextMain, fontSize = 22.sp, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.height(16.dp))
                 SheetItem("Сменить режим", "Сейчас: " + if (state.mode == W1ndy.MODE_DNS) "только DNS" else "VPN") {
                     showSettings = false
@@ -558,63 +576,52 @@ private fun Home(
 
 @Composable
 private fun ConnectButton(status: Status, modifier: Modifier = Modifier, onClick: () -> Unit) {
-    val transition = rememberInfiniteTransition(label = "pulse")
-    val pulse by transition.animateFloat(
-        initialValue = 0f, targetValue = 1f,
-        animationSpec = infiniteRepeatable(tween(1300), RepeatMode.Reverse), label = "glow",
-    )
     val on = status == Status.Started
     val busy = status == Status.Starting || status == Status.Stopping
+    val transition = rememberInfiniteTransition(label = "pulse")
+    val pulse by transition.animateFloat(0f, 1f, infiniteRepeatable(tween(1400), RepeatMode.Reverse), label = "p")
     val glow = when {
-        on -> 0.65f + 0.35f * pulse
-        busy -> 0.25f + 0.6f * pulse
-        else -> 0.35f
-    }
-    val ring = if (on) {
-        Brush.sweepGradient(listOf(BlueLight, Color(0xFF9FD0FF), Blue, Color(0xFF9FD0FF), BlueLight))
-    } else {
-        Brush.sweepGradient(listOf(Color.White, Color(0xFF8FA9C9), Color(0xFF5FA8FF), Color.White, Color(0xFF8FA9C9), Color.White))
+        on -> 0.08f + 0.08f * pulse
+        busy -> 0.03f + 0.07f * pulse
+        else -> 0f
     }
     Box(
-        modifier.size(262.dp).drawBehind {
+        modifier.size(240.dp).drawBehind {
             val r = size.minDimension / 2
-            drawCircle(Brush.radialGradient(listOf(Blue.copy(alpha = 0.55f * glow), Blue.copy(alpha = 0.12f * glow), Color.Transparent), center, r), r)
+            drawCircle(Brush.radialGradient(listOf(Color.White.copy(alpha = glow * 2), Color.White.copy(alpha = glow), Color.Transparent), center, r), r)
         },
         contentAlignment = Alignment.Center,
     ) {
         Box(
             Modifier
-                .size(214.dp)
+                .size(196.dp)
                 .clip(CircleShape)
-                .background(Brush.radialGradient(listOf(Color(0xFF0B1424), Color(0xF5020308))))
-                .border(BorderStroke(if (on) 3.dp else 2.5.dp, ring), CircleShape)
-                .clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null,
-                    enabled = status != Status.Stopping,
-                    onClick = onClick,
-                ),
+                .background(if (on) Color.White else Surface)
+                .border(1.dp, if (on) Color.White else BorderHover, CircleShape)
+                .clickable(enabled = status != Status.Stopping, onClick = onClick),
             contentAlignment = Alignment.Center,
         ) {
+            val fg = if (on) Color.Black else TextMain
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Icon(Icons.Rounded.PowerSettingsNew, contentDescription = null, tint = if (on) BlueLight else Chrome, modifier = Modifier.size(84.dp))
+                Icon(Icons.Rounded.PowerSettingsNew, contentDescription = null, tint = fg, modifier = Modifier.size(64.dp))
                 Spacer(Modifier.height(10.dp))
                 Text(
                     when (status) {
-                        Status.Stopped -> "АКТИВИРОВАТЬ"
-                        Status.Starting -> "ПОДКЛЮЧЕНИЕ"
-                        Status.Started -> "ОТКЛЮЧИТЬ"
-                        Status.Stopping -> "ОТКЛЮЧЕНИЕ"
+                        Status.Stopped -> "Подключить"
+                        Status.Starting -> "Подключение…"
+                        Status.Started -> "Отключить"
+                        Status.Stopping -> "Отключение…"
                     },
-                    color = if (on) BlueLight else TextMain, fontSize = 16.sp, fontWeight = FontWeight.Medium, letterSpacing = 1.sp,
+                    color = fg, fontSize = 17.sp, fontWeight = FontWeight.SemiBold,
                 )
             }
         }
     }
 }
 
+/** Карточка статуса, как «Подписка активна | 28 дн.» в мини-приложении. */
 @Composable
-private fun StatusLine(status: Status, state: W1ndy.State) {
+private fun StatusCard(status: Status, state: W1ndy.State, onChangeMode: () -> Unit) {
     val context = LocalContext.current
     val connected = status == Status.Started
     var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
@@ -625,70 +632,63 @@ private fun StatusLine(status: Status, state: W1ndy.State) {
             delay(1000)
         }
     }
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(9.dp).clip(CircleShape).background(if (connected) BlueLight else if (status == Status.Stopped) Chrome else Muted))
-            Spacer(Modifier.width(10.dp))
-            Text(
-                when (status) {
-                    Status.Stopped -> "РЕЖИМ ВЫКЛЮЧЕН"
-                    Status.Starting -> "ПОДКЛЮЧАЕМСЯ…"
-                    Status.Started -> "РЕЖИМ ВКЛЮЧЕН"
-                    Status.Stopping -> "ОТКЛЮЧАЕМСЯ…"
-                },
-                color = if (connected) BlueLight else TextMain, fontSize = 17.sp, letterSpacing = 1.sp,
-            )
+    val title = when {
+        connected && since > 0 -> {
+            val s = ((now - since) / 1000).coerceAtLeast(0)
+            "Подключено | %02d:%02d:%02d".format(s / 3600, (s / 60) % 60, s % 60)
         }
-        Spacer(Modifier.height(10.dp))
-        val line = buildAnnotatedString {
-            if (connected && since > 0) {
-                val s = ((now - since) / 1000).coerceAtLeast(0)
-                append("В сети: ")
-                withStyle(SpanStyle(color = BlueLight, fontWeight = FontWeight.Bold)) { append("%02d:%02d:%02d".format(s / 3600, (s / 60) % 60, s % 60)) }
-            } else {
-                append("Режим: ")
-                withStyle(SpanStyle(color = BlueLight, fontWeight = FontWeight.Bold)) {
-                    append(if (state.mode == W1ndy.MODE_DNS) "DNS ${state.dnsServer}" else "VPN")
-                }
+        connected -> "Подключено"
+        status == Status.Starting -> "Подключаемся…"
+        status == Status.Stopping -> "Отключаемся…"
+        state.mode == W1ndy.MODE_DNS -> "Режим DNS"
+        state.daysLeft != null -> if ((state.daysLeft ?: 0) > 0) "Ключ активен | ${state.daysLeft} дн." else "Срок ключа истёк"
+        else -> "VPN выключен"
+    }
+    val subtitle = if (state.mode == W1ndy.MODE_DNS) "DNS-сервер ${state.dnsServer}" else state.accessLine
+    Column(
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(26.dp)).background(Surface).border(1.dp, Border, RoundedCornerShape(26.dp)).padding(18.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                Modifier.size(42.dp).clip(CircleShape).background(if (connected) Color.White else Pill).border(1.dp, BorderHover, CircleShape),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    if (connected) Icons.Rounded.Check else Icons.Rounded.PowerSettingsNew,
+                    contentDescription = null, tint = if (connected) Color.Black else TextMain, modifier = Modifier.size(22.dp),
+                )
+            }
+            Spacer(Modifier.width(14.dp))
+            Column(Modifier.weight(1f)) {
+                Text(title, color = TextMain, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                Spacer(Modifier.height(2.dp))
+                Text(subtitle, color = Muted, fontSize = 14.sp, maxLines = 2)
             }
         }
-        Text(line, color = Muted, fontSize = 15.sp)
+        Spacer(Modifier.height(18.dp))
+        PillButton(Icons.Rounded.SwapVert, "Сменить режим", onChangeMode)
     }
 }
 
 @Composable
-private fun GlowPill(icon: ImageVector, title: String, handle: String, onClick: () -> Unit) {
+private fun RoundIconButton(icon: ImageVector, label: String, onClick: () -> Unit) {
+    Box(
+        Modifier.size(44.dp).clip(CircleShape).background(Surface).border(1.dp, Border, CircleShape).clickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) { Icon(icon, contentDescription = label, tint = TextMain, modifier = Modifier.size(22.dp)) }
+}
+
+/** Тёмная кнопка внутри карточки (как «Сменить тариф»). */
+@Composable
+private fun PillButton(icon: ImageVector, text: String, onClick: () -> Unit) {
     Row(
-        Modifier
-            .fillMaxWidth()
-            .drawBehind {
-                val g = 5.dp.toPx()
-                drawRoundRect(
-                    color = Blue.copy(alpha = 0.16f),
-                    topLeft = Offset(-g, -g),
-                    size = Size(size.width + 2 * g, size.height + 2 * g),
-                    cornerRadius = CornerRadius(24.dp.toPx()),
-                )
-            }
-            .clip(RoundedCornerShape(20.dp))
-            .background(Brush.verticalGradient(listOf(Color(0xD90B1B36), Color(0xD9040A16))))
-            .border(1.5.dp, Brush.horizontalGradient(listOf(Blue, Color(0xFF8CC2FF), Blue)), RoundedCornerShape(20.dp))
-            .clickable(onClick = onClick)
-            .padding(horizontal = 20.dp, vertical = 18.dp),
+        Modifier.fillMaxWidth().height(48.dp).clip(RoundedCornerShape(16.dp)).background(Pill).border(1.dp, Border, RoundedCornerShape(16.dp)).clickable(onClick = onClick),
+        horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(icon, contentDescription = null, tint = Chrome, modifier = Modifier.size(26.dp))
-        Spacer(Modifier.width(16.dp))
-        Text(
-            buildAnnotatedString {
-                append(title)
-                if (handle.isNotEmpty()) {
-                    append(" ")
-                    withStyle(SpanStyle(color = BlueLight)) { append(handle) }
-                }
-            },
-            color = TextMain, fontSize = 15.sp, modifier = Modifier.weight(1f),
-        )
+        Icon(icon, contentDescription = null, tint = TextMain, modifier = Modifier.size(18.dp))
+        Spacer(Modifier.width(8.dp))
+        Text(text, color = TextMain, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
     }
 }
 
@@ -696,7 +696,7 @@ private fun GlowPill(icon: ImageVector, title: String, handle: String, onClick: 
 
 @Composable
 private fun fieldColors() = OutlinedTextFieldDefaults.colors(
-    focusedBorderColor = BlueLight,
+    focusedBorderColor = Color.White,
     unfocusedBorderColor = BorderHover,
     focusedContainerColor = Surface,
     unfocusedContainerColor = Surface,
@@ -727,17 +727,17 @@ private fun PrimaryButton(text: String, busy: Boolean, enabled: Boolean = true, 
     Button(
         onClick = onClick,
         enabled = enabled && !busy,
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(20.dp),
         colors = ButtonDefaults.buttonColors(
-            containerColor = Blue, contentColor = Color.White,
-            disabledContainerColor = Pill, disabledContentColor = Dim,
+            containerColor = Color.White, contentColor = Color.Black,
+            disabledContainerColor = Surface, disabledContentColor = Dim,
         ),
         modifier = Modifier.fillMaxWidth().height(56.dp),
     ) {
         if (busy) {
-            CircularProgressIndicator(color = Color.White, modifier = Modifier.size(22.dp), strokeWidth = 2.dp)
+            CircularProgressIndicator(color = Color.Black, modifier = Modifier.size(22.dp), strokeWidth = 2.dp)
         } else {
-            Text(text, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+            Text(text, fontSize = 17.sp, fontWeight = FontWeight.Bold)
         }
     }
 }
@@ -747,15 +747,15 @@ private fun ChoiceCard(icon: ImageVector, title: String, subtitle: String, onCli
     Row(
         Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(20.dp))
+            .clip(RoundedCornerShape(24.dp))
             .background(Surface)
-            .border(1.dp, Border, RoundedCornerShape(20.dp))
+            .border(1.dp, Border, RoundedCornerShape(24.dp))
             .clickable(onClick = onClick)
             .padding(18.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(Modifier.size(48.dp).clip(RoundedCornerShape(14.dp)).background(Pill), contentAlignment = Alignment.Center) {
-            Icon(icon, contentDescription = null, tint = TextMain, modifier = Modifier.size(26.dp))
+        Box(Modifier.size(46.dp).clip(CircleShape).background(Pill).border(1.dp, Border, CircleShape), contentAlignment = Alignment.Center) {
+            Icon(icon, contentDescription = null, tint = TextMain, modifier = Modifier.size(24.dp))
         }
         Spacer(Modifier.width(16.dp))
         Column(Modifier.weight(1f)) {
@@ -772,20 +772,20 @@ private fun LinkCard(icon: ImageVector, title: String, subtitle: String, onClick
     Row(
         Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(20.dp))
+            .clip(RoundedCornerShape(22.dp))
             .background(Surface)
-            .border(1.dp, Border, RoundedCornerShape(20.dp))
+            .border(1.dp, Border, RoundedCornerShape(22.dp))
             .clickable(onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(Modifier.size(42.dp).clip(RoundedCornerShape(13.dp)).background(Pill), contentAlignment = Alignment.Center) {
-            Icon(icon, contentDescription = null, tint = TextMain, modifier = Modifier.size(22.dp))
+        Box(Modifier.size(40.dp).clip(CircleShape).background(Pill).border(1.dp, Border, CircleShape), contentAlignment = Alignment.Center) {
+            Icon(icon, contentDescription = null, tint = TextMain, modifier = Modifier.size(20.dp))
         }
         Spacer(Modifier.width(14.dp))
         Column(Modifier.weight(1f)) {
             Text(title, color = TextMain, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
-            Text(subtitle, color = Muted, fontSize = 13.sp)
+            Text(subtitle, color = Muted, fontSize = 14.sp)
         }
         Icon(Icons.Rounded.ChevronRight, contentDescription = null, tint = Dim)
     }
@@ -797,7 +797,7 @@ private fun DnsRow(title: String, address: String, selected: Boolean, onClick: (
         Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 8.dp, vertical = 2.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        RadioButton(selected = selected, onClick = onClick, colors = RadioButtonDefaults.colors(selectedColor = BlueLight, unselectedColor = Dim))
+        RadioButton(selected = selected, onClick = onClick, colors = RadioButtonDefaults.colors(selectedColor = Color.White, unselectedColor = Dim))
         Text(title, color = TextMain, fontSize = 16.sp, modifier = Modifier.weight(1f))
         if (address.isNotEmpty()) Text(address, color = Muted, fontSize = 15.sp, modifier = Modifier.padding(end = 12.dp))
     }
@@ -809,12 +809,13 @@ private fun SheetItem(title: String, subtitle: String, onClick: () -> Unit) {
         Modifier
             .fillMaxWidth()
             .padding(vertical = 4.dp)
-            .clip(RoundedCornerShape(16.dp))
+            .clip(RoundedCornerShape(18.dp))
             .background(Surface)
+            .border(1.dp, Border, RoundedCornerShape(18.dp))
             .clickable(onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 14.dp),
     ) {
         Text(title, color = TextMain, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
-        Text(subtitle, color = Muted, fontSize = 13.sp)
+        Text(subtitle, color = Muted, fontSize = 14.sp)
     }
 }
