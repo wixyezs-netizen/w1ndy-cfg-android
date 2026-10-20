@@ -562,7 +562,7 @@ private fun ConnectButton(status: Status, modifier: Modifier = Modifier, onClick
             contentAlignment = Alignment.Center,
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Icon(Icons.Rounded.PowerSettingsNew, contentDescription = "Подключить", tint = accent, modifier = Modifier.size(72.dp))
+                Icon(Icons.Rounded.PowerSettingsNew, contentDescription = null, tint = accent, modifier = Modifier.size(72.dp))
                 Spacer(Modifier.height(6.dp))
                 Text(
                     when (status) {
