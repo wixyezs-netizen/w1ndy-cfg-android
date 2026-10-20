@@ -135,24 +135,55 @@ object W1ndy {
         return id
     }
 
+    private const val NET_ERROR = "Сервер не отвечает. Проверьте интернет и попробуйте ещё раз."
+
+    /**
+     * Запрос к API. Каждый раз новое соединение (без keep-alive): на части мобильных сетей
+     * долгоживущие соединения через CDN «замирают» после нескольких килобайт — короткие проходят.
+     * Сетевые сбои повторяются до 3 раз; активация повторяется, только если запрос не ушёл на сервер.
+     */
     private fun request(method: String, path: String, body: JSONObject? = null): JSONObject {
+        val idempotent = !path.startsWith("/api/w1ndy/activate")
+        var last: java.io.IOException? = null
+        repeat(3) { attempt ->
+            if (attempt > 0) Thread.sleep(800L * attempt)
+            try {
+                return requestOnce(method, path, body)
+            } catch (e: java.io.IOException) {
+                last = e
+                val notSent = e is java.net.ConnectException || e is java.net.UnknownHostException ||
+                    e is java.net.NoRouteToHostException ||
+                    (e is java.net.SocketTimeoutException && e.message?.contains("connect", ignoreCase = true) == true)
+                if (!idempotent && !notSent) throw ApiException(0, NET_ERROR)
+            }
+        }
+        android.util.Log.w("W1NDY", "request failed: $path", last)
+        throw ApiException(0, NET_ERROR)
+    }
+
+    private fun requestOnce(method: String, path: String, body: JSONObject?): JSONObject {
         val conn = URL(BASE_URL + path).openConnection() as HttpURLConnection
         try {
             conn.requestMethod = method
-            conn.connectTimeout = 15_000
-            conn.readTimeout = 20_000
+            conn.connectTimeout = 8_000
+            conn.readTimeout = 10_000
+            conn.useCaches = false
+            conn.setRequestProperty("Connection", "close")
             conn.setRequestProperty("Accept", "application/json")
             conn.setRequestProperty("User-Agent", "W1NDY-CFG/${BuildConfig.VERSION_NAME} (Android)")
             if (body != null) {
+                val bytes = body.toString().toByteArray(Charsets.UTF_8)
                 conn.doOutput = true
+                conn.setFixedLengthStreamingMode(bytes.size)
                 conn.setRequestProperty("Content-Type", "application/json; charset=utf-8")
-                conn.outputStream.use { it.write(body.toString().toByteArray(Charsets.UTF_8)) }
+                conn.outputStream.use { it.write(bytes) }
             }
             val code = conn.responseCode
             val stream = if (code in 200..299) conn.inputStream else conn.errorStream
             val text = stream?.bufferedReader()?.use { it.readText() } ?: ""
             val json = runCatching { JSONObject(text) }.getOrElse { JSONObject() }
             if (code !in 200..299) {
+                if (code in 520..530 || code == 502 || code == 504) throw java.io.IOException("gateway $code")
                 throw ApiException(code, json.optString("message").ifEmpty { "Ошибка сервера ($code)" })
             }
             return json
